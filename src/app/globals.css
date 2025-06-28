@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 全局样式 - 黑白高对比度设计 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: #000000;
+  color: #ffffff;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  line-height: 1.5;
+}
+
+/* 确保高对比度 */
+.game-cell {
+  border: 1px solid #ffffff;
+}
+
+.game-cell.filled {
+  background-color: #ffffff;
+}
+
+.game-cell.empty {
+  background-color: #000000;
+}
+
+/* 按钮样式 */
+.btn {
+  background-color: #000000;
+  color: #ffffff;
+  border: 2px solid #ffffff;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.btn:hover {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 输入框样式 */
+.input {
+  background-color: #000000;
+  color: #ffffff;
+  border: 1px solid #ffffff;
+  padding: 8px;
+  font-family: inherit;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #ffffff;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
+}
