@@ -46,11 +46,30 @@ export class CollisionDetector {
   findDropPosition(piece: PieceInstance, startPosition: Position): Position {
     let position = { ...startPosition }
     
-    while (this.canPlace(piece, { x: position.x, y: position.y + 1 })) {
-      position.y++
+    // 确保起始位置是有效的
+    if (!this.canPlace(piece, position)) {
+      console.error('findDropPosition: 起始位置无效', position)
+      return position
     }
     
-    return position
+    // 从当前位置开始，一步步向下查找最后一个有效位置
+    let lastValidPosition = { ...position }
+    
+    while (position.y < this.height - 1) {  // 防止越界
+      const nextPosition = { x: position.x, y: position.y + 1 }
+      
+      // 检查下一个位置是否可放置
+      if (this.canPlace(piece, nextPosition)) {
+        // 可以放置，更新位置并继续
+        position = nextPosition
+        lastValidPosition = { ...position }
+      } else {
+        // 不能放置，返回最后一个有效位置
+        break
+      }
+    }
+    
+    return lastValidPosition
   }
 
   // 检查指定行是否已满
@@ -60,7 +79,7 @@ export class CollisionDetector {
   }
 
   // 检查游戏是否结束（顶部有方块且无法移动）
-  isGameOver(newPiece: PieceInstance): boolean {
-    return !this.canPlace(newPiece, newPiece.position)
+  isGameOver(newPiece: PieceInstance, position: Position = { x: 4, y: 0 }): boolean {
+    return !this.canPlace(newPiece, position)
   }
 }

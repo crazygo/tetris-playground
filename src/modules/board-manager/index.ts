@@ -81,8 +81,8 @@ export class BoardManager {
   }
 
   // 检查游戏是否结束
-  isGameOver(newPiece: PieceInstance): boolean {
-    return this.collisionDetector.isGameOver(newPiece)
+  isGameOver(newPiece: PieceInstance, position: Position = { x: 4, y: 0 }): boolean {
+    return this.collisionDetector.isGameOver(newPiece, position)
   }
 
   // 生成AI所需的棋盘状态字符串

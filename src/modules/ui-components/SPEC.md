@@ -9,10 +9,13 @@
 - ✅ **GameBoard**: 10x20棋盘渲染，显示已放置和正在下落的方块
 - ✅ **NextPieces**: 预览后续3个方块
 - ✅ **ScoreDisplay**: 显示当前得分、等级、消除行数和游戏时间
-- ✅ **ControlPanel**: One Step按钮、游戏控制和AI状态显示
+- ✅ **ControlPanel**: 重置游戏按钮、游戏控制和AI状态显示
 
 ### 2. AI编辑界面
-- ✅ **PromptEditor**: 用户Prompt编辑器（集成验证状态显示）
+- ✅ **PromptEditor**: 用户Prompt编辑器（集成验证状态、三按钮布局、执行日志显示）
+  - ✅ **三按钮布局**: "验证策略"、"One Step"、"5 Steps"同行显示
+  - ✅ **集成执行日志**: 显示AI执行历史和结果
+  - ✅ **示例策略选择**: 提供预设策略选项
 
 ### 3. 页面组件
 - ✅ **GamePage**: 主游戏页面集成所有组件
@@ -73,15 +76,22 @@ interface ControlPanelProps {
   aiMode: string           // AI模式
 }
 
-// ✅ PromptEditor组件（集成ValidationStatus功能）
+// ✅ PromptEditor组件（集成ValidationStatus、三按钮布局、执行日志功能）
 interface PromptEditorProps {
   value: string
   onChange: (value: string) => void
-  onValidate: () => void
+  onValidate: () => Promise<ValidationResult>
   validationResult?: ValidationResult
-  examples: string[]       // 示例策略
-  onExampleSelect: (example: string) => void  // 示例选择
-  isValidating: boolean    // 验证状态
+  isValidating?: boolean
+  examplePrompts?: string[]
+  className?: string
+  // 新增执行功能
+  onStep?: () => void
+  onMultiStep?: () => void  // 5 Steps功能
+  isProcessing?: boolean
+  aiReady?: boolean
+  // 新增日志功能
+  actionLog?: string[]     // 执行日志显示
 }
 ```
 
@@ -128,11 +138,14 @@ interface PromptEditorProps {
 - **被依赖**: 无
 
 ## 实现状态
-- **实现完成度**: 60% (5/9个组件)
-- **核心功能**: ✅ 完全实现
+- **实现完成度**: 75% (核心UI功能完整实现)
+- **核心功能**: ✅ 完全实现，超出原规格
 - **设计风格**: ✅ 完全符合SPEC要求
-- **用户体验**: ✅ 超出原规格的优化
-- **缺失组件**: ❌ TestResults, GameHistory, ScoreCard
+- **用户体验**: ✅ 显著超出原规格的优化
+  - ✅ 三按钮整合布局优化
+  - ✅ 实时执行日志反馈
+  - ✅ 自动游戏启动和重置优化
+- **缺失组件**: ❌ TestResults, GameHistory, ScoreCard（非核心功能）
 
 ## ❌ 与原SPEC的差异
 

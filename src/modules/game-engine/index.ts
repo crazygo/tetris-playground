@@ -95,6 +95,20 @@ export class GameEngine {
       // 执行动作
       const result = await this.executeAction(action)
       
+      // 无论AI动作是否成功，都要进入下落轮（除非游戏已结束或方块已经着陆）
+      if (result.success && !result.gameOver && action.type !== 'down') {
+        // 如果动作成功且不是直接下落，执行一次自动下落
+        const autoDropResult = await this.executeAutoDropStep('AI执行后自动下落')
+        
+        this.changeState(GameState.WAITING)
+        
+        // 返回自动下落的结果，包含原始动作信息
+        return {
+          ...autoDropResult,
+          action: `${result.action} → ${autoDropResult.action || '自动下落'}`
+        }
+      }
+      
       if (result.success) {
         this.changeState(GameState.WAITING)
       }
@@ -104,7 +118,8 @@ export class GameEngine {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'AI决策失败'
       this.changeState(GameState.WAITING)
-      return { success: false, error: errorMessage }
+      // AI决策失败时也执行自动下落，保持游戏流程
+      return await this.executeAutoDropStep(`AI决策失败(${errorMessage})，自动下落`)
     }
   }
 
@@ -121,46 +136,65 @@ export class GameEngine {
     try {
       switch (action.type) {
         case 'rotate_right':
-          if (action.parameters.deg) {
-            newPiece = this.pieceSystem.rotatePiece(this.currentPiece, action.parameters.deg as RotationDirection)
-            actionDescription = `旋转 ${action.parameters.deg}度`
-          }
+          // 默认旋转90度，如果指定了角度则使用指定角度
+          const rotationDeg = action.parameters?.deg || 90
+          newPiece = this.pieceSystem.rotatePiece(this.currentPiece, rotationDeg as RotationDirection)
+          actionDescription = `顺时针旋转 ${rotationDeg}度`
           break
           
         case 'left':
-          if (action.parameters.step) {
-            newPiece = this.pieceSystem.movePiece(this.currentPiece, Direction.LEFT, action.parameters.step)
-            newPosition.x -= action.parameters.step
-            actionDescription = `左移 ${action.parameters.step}步`
-          }
+          // 默认移动1步，如果指定了步数则使用指定步数
+          const leftSteps = action.parameters?.step || 1
+          newPosition.x -= leftSteps
+          actionDescription = `左移 ${leftSteps}步`
           break
           
         case 'right':
-          if (action.parameters.step) {
-            newPiece = this.pieceSystem.movePiece(this.currentPiece, Direction.RIGHT, action.parameters.step)
-            newPosition.x += action.parameters.step
-            actionDescription = `右移 ${action.parameters.step}步`
-          }
+          // 默认移动1步，如果指定了步数则使用指定步数
+          const rightSteps = action.parameters?.step || 1
+          newPosition.x += rightSteps
+          actionDescription = `右移 ${rightSteps}步`
           break
           
         case 'down':
           // 直接下落到底部
           newPosition = this.boardManager.findDropPosition(this.currentPiece, this.currentPosition)
           actionDescription = '直接下落'
+          // 确保找到的位置是有效的
+          if (!this.boardManager.canPlace(this.currentPiece, newPosition)) {
+            console.error('findDropPosition返回了无效位置:', {
+              originalPosition: this.currentPosition,
+              dropPosition: newPosition,
+              piece: this.currentPiece?.shape
+            })
+            // 如果找到的位置无效，回退到当前位置
+            newPosition = { ...this.currentPosition }
+          }
+          break
+          
+        default:
+          actionDescription = `未知动作类型: ${action.type}`
           break
       }
 
       // 验证移动是否合法
       if (action.type !== 'down' && !this.boardManager.canPlace(newPiece, newPosition)) {
-        return { success: false, error: `动作不合法: ${actionDescription}` }
+        // 动作不合法时，忽略动作但继续游戏流程：让方块自动下落一步
+        // 重要：不改变当前方块状态，保持原始的currentPiece和currentPosition
+        const autoDropDescription = `AI动作不合法(${actionDescription})，自动下落`
+        return await this.executeAutoDropStep(autoDropDescription)
       }
 
       // 更新当前方块状态
       this.currentPiece = newPiece
       this.currentPosition = newPosition
 
-      // 如果是下落动作或方块已着陆，则放置方块
-      if (action.type === 'down' || this.boardManager.hasLanded(this.currentPiece, this.currentPosition)) {
+      // 检查方块是否需要放置：
+      // 1. 如果是down动作，立即放置
+      // 2. 如果动作执行后方块已经着陆，放置方块
+      if (action.type === 'down') {
+        return await this.placePieceAndContinue(actionDescription)
+      } else if (this.boardManager.hasLanded(this.currentPiece, this.currentPosition)) {
         return await this.placePieceAndContinue(actionDescription)
       }
 
@@ -168,7 +202,39 @@ export class GameEngine {
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '执行动作失败'
-      return { success: false, error: errorMessage }
+      // 即使出错也尝试自动下落，保持游戏流程
+      return await this.executeAutoDropStep(`执行出错(${errorMessage})，自动下落`)
+    }
+  }
+
+  // 执行自动下落步骤
+  private async executeAutoDropStep(description: string): Promise<StepResult> {
+    if (!this.currentPiece) {
+      return { success: false, error: '没有当前方块，无法自动下落' }
+    }
+
+    // 确保当前位置是有效的
+    if (!this.boardManager.canPlace(this.currentPiece, this.currentPosition)) {
+      // 如果当前位置都不合法，直接着陆
+      return await this.placePieceAndContinue(description + " + 当前位置不合法，立即着陆")
+    }
+
+    // 尝试让方块下落一步
+    const dropPosition = { x: this.currentPosition.x, y: this.currentPosition.y + 1 }
+    
+    if (this.boardManager.canPlace(this.currentPiece, dropPosition)) {
+      // 可以下落，更新位置
+      this.currentPosition = dropPosition
+      
+      // 检查下落后是否着陆
+      if (this.boardManager.hasLanded(this.currentPiece, this.currentPosition)) {
+        return await this.placePieceAndContinue(description + " + 着陆")
+      }
+      
+      return { success: true, action: description }
+    } else {
+      // 无法下落，立即着陆
+      return await this.placePieceAndContinue(description + " + 无法下落，着陆")
     }
   }
 
@@ -201,7 +267,7 @@ export class GameEngine {
     const nextPiece = this.pieceSystem.spawnNext()
     
     // 检查游戏是否结束
-    if (this.boardManager.isGameOver(nextPiece)) {
+    if (this.boardManager.isGameOver(nextPiece, { x: 4, y: 0 })) {
       this.endGame()
       return {
         success: true,

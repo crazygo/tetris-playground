@@ -22,6 +22,7 @@ export default function GamePage() {
   const [validationResult, setValidationResult] = useState<{isValid: boolean; errors: string[]} | undefined>()
   const [isValidating, setIsValidating] = useState(false)
   const [lastAction, setLastAction] = useState<string>('')
+  const [actionLog, setActionLog] = useState<string[]>([])
 
   // 更新游戏状态
   const updateGameState = useCallback(() => {
@@ -31,18 +32,25 @@ export default function GamePage() {
     setNextPieces(gameEngine.nextPieces)
   }, [gameEngine])
 
+  // 页面加载时自动开始游戏
+  useEffect(() => {
+    gameEngine.start()
+    updateGameState()
+  }, [gameEngine, updateGameState])
+
   // 处理游戏开始
   const handleStart = useCallback(() => {
     gameEngine.start()
     updateGameState()
   }, [gameEngine, updateGameState])
 
-  // 处理游戏重置
+  // 处理游戏重置 - 重新开始新局面但保留AI策略设置
   const handleReset = useCallback(() => {
-    gameEngine.reset()
+    gameEngine.start() // 直接开始新游戏而不是reset，这样保留AI配置
     updateGameState()
     setLastAction('')
-    setValidationResult(undefined)
+    setActionLog([]) // 清空行动日志
+    // 不清除 prompt 和 validationResult，保留策略设置
   }, [gameEngine, updateGameState])
 
   // 处理单步执行
@@ -55,18 +63,69 @@ export default function GamePage() {
     setIsProcessing(true)
     try {
       const result = await gameEngine.executeStep()
-      if (result.success) {
-        setLastAction(result.action || '')
-        updateGameState()
-      } else {
-        alert(`执行失败: ${result.error}`)
+      const actionText = result.action || (result.success ? '动作执行完成' : `执行失败: ${result.error}`)
+      setLastAction(actionText)
+      
+      // 添加到行动日志
+      const logEntry = `${new Date().toLocaleTimeString()}: ${actionText}${result.linesCleared ? ` (消除${result.linesCleared.linesCleared}行)` : ''}`
+      setActionLog(prev => [...prev, logEntry].slice(-10)) // 只保留最近10条记录
+      
+      updateGameState()
+      
+      // 只有在严重错误时才显示alert（比如游戏状态异常）
+      if (!result.success && result.error?.includes('游戏未在等待状态')) {
+        alert(`游戏状态异常: ${result.error}`)
       }
     } catch (error) {
       console.error('Execute step failed:', error)
-      alert('执行步骤时出错')
+      const errorMsg = '执行步骤时出错'
+      
+      // 只记录日志，不弹出alert
+      setActionLog(prev => [...prev, `${new Date().toLocaleTimeString()}: ${errorMsg}`].slice(-10))
+      setLastAction(errorMsg)
     } finally {
       setIsProcessing(false)
     }
+  }, [gameEngine, updateGameState])
+
+  // 处理5步执行
+  const handleMultiStep = useCallback(async () => {
+    if (!gameEngine.aiReady) {
+      alert('请先配置并验证AI策略')
+      return
+    }
+
+    setIsProcessing(true)
+    const logEntry = `${new Date().toLocaleTimeString()}: 开始执行5步连续操作`
+    setActionLog(prev => [...prev, logEntry].slice(-10))
+    
+    for (let i = 0; i < 5; i++) {
+      try {
+        const result = await gameEngine.executeStep()
+        const actionText = result.action || (result.success ? '动作执行完成' : `执行失败: ${result.error}`)
+        
+        const stepLogEntry = `${new Date().toLocaleTimeString()}: 第${i+1}步: ${actionText}${result.linesCleared ? ` (消除${result.linesCleared.linesCleared}行)` : ''}`
+        setActionLog(prev => [...prev, stepLogEntry].slice(-10))
+        
+        updateGameState()
+        
+        // 如果游戏结束，停止执行
+        if (result.gameOver) {
+          const endLogEntry = `${new Date().toLocaleTimeString()}: 游戏结束，停止执行`
+          setActionLog(prev => [...prev, endLogEntry].slice(-10))
+          break
+        }
+        
+        // 短暂延迟让用户看到每步效果
+        await new Promise(resolve => setTimeout(resolve, 200))
+      } catch (error) {
+        const errorMsg = `第${i+1}步执行出错`
+        setActionLog(prev => [...prev, `${new Date().toLocaleTimeString()}: ${errorMsg}`].slice(-10))
+        break
+      }
+    }
+    
+    setIsProcessing(false)
   }, [gameEngine, updateGameState])
 
   // 处理Prompt验证
@@ -84,6 +143,13 @@ export default function GamePage() {
       gameEngine.setAIPrompt(prompt)
       const result = await gameEngine.validateAIPrompt()
       setValidationResult(result)
+      
+      // 添加验证结果到日志
+      if (result.isValid) {
+        const logEntry = `${new Date().toLocaleTimeString()}: ✓ 策略验证成功`
+        setActionLog(prev => [...prev, logEntry].slice(-10))
+      }
+      
       return result
     } catch (error) {
       const errorResult = {
@@ -114,8 +180,29 @@ export default function GamePage() {
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* 左侧：AI配置 */}
+          {/* 左侧：游戏控制 + AI配置 */}
           <div className="lg:col-span-1">
+            {/* 游戏控制区域 */}
+            <div className="mb-6 p-4 border border-white">
+              <h3 className="text-lg font-bold mb-4 border-b border-white pb-2">
+                游戏控制
+              </h3>
+              <div className="space-y-3">
+                <button
+                  onClick={handleReset}
+                  className="btn w-full py-2 text-sm"
+                >
+                  重置游戏
+                </button>
+                
+                <div className="text-xs text-gray-400 space-y-1">
+                  <div>AI状态: {gameEngine.aiReady ? '就绪' : '未配置'}</div>
+                  <div>游戏状态: {gameState.gameState}</div>
+                </div>
+              </div>
+            </div>
+            
+            {/* AI策略配置 */}
             <PromptEditor
               value={prompt}
               onChange={setPrompt}
@@ -123,18 +210,11 @@ export default function GamePage() {
               validationResult={validationResult}
               isValidating={isValidating}
               examplePrompts={examplePrompts}
-              className="mb-6"
-            />
-            
-            <ControlPanel
-              gameState={gameState.gameState}
-              onStepClick={handleStep}
-              onResetClick={handleReset}
-              onStartClick={handleStart}
+              onStep={handleStep}
+              onMultiStep={handleMultiStep}
               isProcessing={isProcessing}
               aiReady={gameEngine.aiReady}
-              aiMode={(gameEngine as any).aiMode}
-              aiStatus={(gameEngine as any).aiStatus}
+              actionLog={actionLog}
             />
           </div>
 
@@ -148,11 +228,6 @@ export default function GamePage() {
                 className="mb-4"
               />
               
-              {lastAction && (
-                <div className="text-sm text-gray-300">
-                  上次动作: {lastAction}
-                </div>
-              )}
             </div>
           </div>
 
