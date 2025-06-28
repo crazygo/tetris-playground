@@ -16,6 +16,7 @@ dist/
 
 # Runtime data
 .env*.local
+.env.local
 .env
 
 # Debug

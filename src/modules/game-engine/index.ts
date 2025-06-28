@@ -280,6 +280,14 @@ export class GameEngine {
     return this.aiIntegration.error
   }
 
+  get aiMode(): string {
+    return this.aiIntegration.aiMode
+  }
+
+  get aiStatus(): string {
+    return this.aiIntegration.aiStatusText
+  }
+
   // 获取当前状态
   get gameState(): GameEngineState {
     if (this.state.startTime && this.state.isRunning) {

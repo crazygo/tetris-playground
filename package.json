@@ -15,7 +15,8 @@
     "react": "^18",
     "react-dom": "^18",
     "ai": "^3.0.0",
-    "@ai-sdk/openai": "^0.0.0"
+    "@ai-sdk/openai": "^0.0.54",
+    "zod": "^3.22.0"
   },
   "devDependencies": {
     "typescript": "^5",

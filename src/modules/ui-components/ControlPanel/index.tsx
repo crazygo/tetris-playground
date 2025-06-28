@@ -9,6 +9,8 @@ interface ControlPanelProps {
   onStartClick: () => void
   isProcessing: boolean
   aiReady: boolean
+  aiMode?: string
+  aiStatus?: string
   className?: string
 }
 
@@ -19,6 +21,8 @@ export function ControlPanel({
   onStartClick,
   isProcessing,
   aiReady,
+  aiMode = 'Unknown',
+  aiStatus = 'Unknown',
   className = '' 
 }: ControlPanelProps) {
   const getStepButtonText = () => {
@@ -62,9 +66,13 @@ export function ControlPanel({
         </button>
       </div>
       
-      <div className="mt-4 text-xs text-gray-400">
-        <div>状态: {gameState}</div>
+      <div className="mt-4 text-xs text-gray-400 space-y-1">
+        <div>游戏状态: {gameState}</div>
+        <div>AI模式: {aiMode}</div>
         <div>AI状态: {aiReady ? '就绪' : '未就绪'}</div>
+        <div title={aiStatus} className="truncate">
+          {aiStatus.length > 20 ? `${aiStatus.substring(0, 20)}...` : aiStatus}
+        </div>
       </div>
     </div>
   )

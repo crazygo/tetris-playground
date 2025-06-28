@@ -1,14 +1,26 @@
 import { AIGameState, GameAction, ValidationResult, AIResponse, SYSTEM_PROMPT_TEMPLATE } from './types'
-import { MockAI } from './mock-ai'
+import { APIClient } from './api-client'
 
 export class AIIntegration {
   private userPrompt: string = ''
-  private mockAI: MockAI
+  private apiClient: APIClient
   private isValidated: boolean = false
   private lastError?: string
+  private aiStatus: any = null
 
   constructor() {
-    this.mockAI = new MockAI()
+    this.apiClient = new APIClient()
+    this.initializeStatus()
+  }
+
+  private async initializeStatus() {
+    try {
+      this.aiStatus = await this.apiClient.getStatus()
+      console.log(`🤖 AI模式: ${this.aiStatus.mode}`)
+    } catch (error) {
+      console.warn('AI状态检查失败:', error)
+      this.aiStatus = { isConfigured: false, mode: 'Unknown', status: '状态检查失败' }
+    }
   }
 
   // 设置用户Prompt
@@ -25,7 +37,7 @@ export class AIIntegration {
   // 验证Prompt
   async validatePrompt(): Promise<ValidationResult> {
     try {
-      const result = await this.mockAI.validatePrompt(this.userPrompt)
+      const result = await this.apiClient.validatePrompt(this.userPrompt)
       this.isValidated = result.isValid
       this.lastError = result.isValid ? undefined : result.errors.join(', ')
       
@@ -47,7 +59,7 @@ export class AIIntegration {
     }
 
     try {
-      const response = await this.mockAI.makeDecision(gameState, this.userPrompt)
+      const response = await this.apiClient.makeDecision(gameState, this.userPrompt)
       this.lastError = undefined
       return response.action
     } catch (error) {
@@ -96,6 +108,14 @@ export class AIIntegration {
 
   get error(): string | undefined {
     return this.lastError
+  }
+
+  get aiMode(): string {
+    return this.aiStatus?.mode || 'Unknown'
+  }
+
+  get aiStatusText(): string {
+    return this.aiStatus?.status || '状态检查中...'
   }
 
   // 重置状态

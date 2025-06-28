@@ -94,6 +94,84 @@ npm test           # 运行测试
 npm run test:watch  # 监视模式运行测试
 ```
 
+### Git提交规范
+
+本项目使用详细的Conventional Commits规范，确保提交消息的高质量和一致性。
+
+#### 提交消息结构模板
+
+```
+<type>: <简短描述 (50字符内)>
+
+<详细描述，解释what和why>
+
+## <功能分类1>
+
+### 🔧 <子功能描述>
+- **模块1**: 具体实现细节和技术要点
+- **模块2**: 架构决策和设计思路
+- **数据流**: 关键的数据处理逻辑
+
+### 🎮 <子功能描述>
+- 具体功能实现
+- 用户体验改进
+- 性能优化措施
+
+## <功能分类2>
+...
+
+### 📁 Project Structure (如有架构变更)
+```
+新增/修改的目录结构
+```
+
+### 🔧 Technical Implementation
+- **Framework**: 技术栈说明
+- **Architecture**: 架构模式
+- **Integration**: 第三方服务集成
+
+### 🎯 Development Methodology (如有工作流变更)
+- 开发方法论说明
+- 模块化设计理念
+
+## Breaking Changes (如有)
+- 重大变更说明
+
+## Migration Guide (如有)
+- 迁移步骤说明
+
+## Future Roadmap (可选)
+- 后续开发计划
+
+---
+
+<项目特色说明，突出技术亮点和教育价值>
+
+🤖 Generated with [Claude Code](https://claude.ai/code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>
+```
+
+#### 常用类型标识
+
+- `feat`: 新功能
+- `fix`: 修复bug
+- `docs`: 文档更新
+- `style`: 代码格式调整
+- `refactor`: 重构
+- `test`: 测试相关
+- `chore`: 构建/工具链相关
+- `perf`: 性能优化
+
+#### 高质量提交消息要点
+
+1. **结构化描述**: 使用markdown格式，层次清晰
+2. **功能分类**: 用表情符号和分类组织内容
+3. **技术细节**: 包含架构决策和实现细节
+4. **用户价值**: 说明功能对用户的意义
+5. **完整性**: 涵盖所有重要变更
+6. **教育性**: 突出学习价值和技术亮点
+
 ### 文件结构约定
 - 每个模块有独立目录和SPEC.md文档
 - 功能定义在SPEC.md中，代码在同目录实现

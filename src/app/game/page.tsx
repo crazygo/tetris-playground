@@ -133,6 +133,8 @@ export default function GamePage() {
               onStartClick={handleStart}
               isProcessing={isProcessing}
               aiReady={gameEngine.aiReady}
+              aiMode={(gameEngine as any).aiMode}
+              aiStatus={(gameEngine as any).aiStatus}
             />
           </div>
 
